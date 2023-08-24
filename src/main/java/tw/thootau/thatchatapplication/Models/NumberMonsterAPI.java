@@ -23,7 +23,7 @@ public class NumberMonsterAPI implements ExternalAPI {
     }
 
     @Override
-    public String login(String mail, String password, int applicationVersion) throws IOException {
+    public String login(String mail, String password, int applicationVersion) throws Exception {
         HttpUrl apiRequestURL = new HttpUrl.Builder()
                 .scheme("https")
                 .host(numberMonsterProperties.getHost())
@@ -39,17 +39,15 @@ public class NumberMonsterAPI implements ExternalAPI {
         OkHttpClient client = new OkHttpClient();
 
         try (Response response = client.newCall(request).execute()) {
-            if (response.isSuccessful()) {
-                ObjectMapper mapper  = new ObjectMapper();
-                mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-                String responseJsonString = response.body().string();
-                GetLoginApiResponse apiResponse = mapper.readValue(responseJsonString, GetLoginApiResponse.class);
-                return apiResponse.data.authKey;
-            }
-        } catch (IOException error) {
+            if (!response.isSuccessful()) throw new Exception("Login Failed");
+            ObjectMapper mapper  = new ObjectMapper();
+            mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            String responseJsonString = response.body().string();
+            GetLoginApiResponse apiResponse = mapper.readValue(responseJsonString, GetLoginApiResponse.class);
+            return apiResponse.data.authKey;
+        } catch (Exception error) {
             throw error;
         }
-        return "";
     }
     @Override
     public List<MessageEntry> getMessage(String authKey, String publicKey, int applicationVersion) throws IOException {
@@ -61,13 +59,14 @@ public class NumberMonsterAPI implements ExternalAPI {
         OkHttpClient client = new OkHttpClient();
 
         try (Response response = client.newCall(request).execute()) {
-            if (response.isSuccessful()) {
-                ObjectMapper objectMapper = new ObjectMapper();
-                GetMessagesApiResponse apiResponse = objectMapper.readValue(response.body().string(), GetMessagesApiResponse.class);
-                return apiResponse.data;
-            }
+            if (!response.isSuccessful()) throw new Exception("請求失敗");
+            ObjectMapper objectMapper = new ObjectMapper();
+            GetMessagesApiResponse apiResponse = objectMapper.readValue(response.body().string(), GetMessagesApiResponse.class);
+            return apiResponse.data;
         } catch (IOException error) {
             throw error;
+        } catch (Exception ex) {
+            System.out.println(ex);
         }
         return null;
     }
