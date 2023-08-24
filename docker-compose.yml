@@ -1,0 +1,44 @@
+version: "3.7"
+
+networks:
+  that-chat-application-network:
+
+services:
+  java:
+    image: maven:3.9.3-eclipse-temurin-17-focal
+    volumes:
+      - .:/src/app
+    tty: true
+    command:
+      - sh
+    networks:
+      that-chat-application-network:
+        aliases:
+          - "api"
+  mqtt:
+    image: 'rabbitmq:latest'
+    environment:
+      - 'RABBITMQ_DEFAULT_PASS=secret'
+      - 'RABBITMQ_DEFAULT_USER=myuser'
+    networks:
+      that-chat-application-network:
+        aliases:
+          - "mqtt"
+  redis:
+    image: redis
+    networks:
+      that-chat-application-network:
+        aliases:
+          - "redis"
+  mongodb:
+    image: 'mongo:latest'
+    environment:
+      - 'MONGO_INITDB_DATABASE=mydatabase'
+      - 'MONGO_INITDB_ROOT_PASSWORD=secret'
+      - 'MONGO_INITDB_ROOT_USERNAME=root'
+    ports:
+      - 27017:27017
+    networks:
+      that-chat-application-network:
+        aliases:
+          - "mongo"
