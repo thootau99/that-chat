@@ -7,10 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import tw.thootau.thatchatapplication.Interfaces.ExternalAPI;
 import tw.thootau.thatchatapplication.Properties.NumberMonsterProperties;
-import tw.thootau.thatchatapplication.Structs.GetLoginApiResponse;
-import tw.thootau.thatchatapplication.Structs.GetMessagesApiResponse;
-import tw.thootau.thatchatapplication.Structs.MessageEntry;
-import tw.thootau.thatchatapplication.Structs.RecentlyChattedUser;
+import tw.thootau.thatchatapplication.Structs.*;
+
 import java.io.IOException;
 import java.util.List;
 
@@ -42,11 +40,10 @@ public class NumberMonsterAPI implements ExternalAPI {
             if (!response.isSuccessful()) throw new Exception("Login Failed");
             ObjectMapper mapper  = new ObjectMapper();
             mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            assert response.body() != null;
             String responseJsonString = response.body().string();
             GetLoginApiResponse apiResponse = mapper.readValue(responseJsonString, GetLoginApiResponse.class);
             return apiResponse.data.authKey;
-        } catch (Exception error) {
-            throw error;
         }
     }
     @Override
@@ -59,20 +56,38 @@ public class NumberMonsterAPI implements ExternalAPI {
         OkHttpClient client = new OkHttpClient();
 
         try (Response response = client.newCall(request).execute()) {
-            if (!response.isSuccessful()) throw new Exception("請求失敗");
+            if (!response.isSuccessful()) throw new Exception("リクエストが失敗しました");
             ObjectMapper objectMapper = new ObjectMapper();
+            assert response.body() != null;
             GetMessagesApiResponse apiResponse = objectMapper.readValue(response.body().string(), GetMessagesApiResponse.class);
             return apiResponse.data;
         } catch (IOException error) {
             throw error;
-        } catch (Exception ex) {
-            System.out.println(ex);
+        } catch (Exception ignored) {
         }
         return null;
     }
 
     @Override
-    public List<RecentlyChattedUser> getRecentlyChattedUsers() {
+    public List<RecentlyChattedUser> getRecentlyChattedUsers(String authKey, int applicationVersion) throws IOException {
+        String urlGoingToFetch = String.format("https://%s/message/getuser?auth_key=%s&start=0&version=%d", numberMonsterProperties.getHost(), authKey, applicationVersion);
+        Request request = new Request.Builder()
+                .url(urlGoingToFetch)
+                .addHeader("user-agent", "iOS 16.2 iPhone14,4 ja-JP 4.12.6 (491)")
+                .build();
+        OkHttpClient client = new OkHttpClient();
+
+        try (Response response = client.newCall(request).execute()) {
+            if (!response.isSuccessful()) throw new Exception("リクエストが失敗しました");
+            ObjectMapper objectMapper = new ObjectMapper();
+            assert response.body() != null;
+            String body = response.body().string();
+            GetChattedUserListResponse apiResponse = objectMapper.readValue(body, GetChattedUserListResponse.class);
+            return apiResponse.data;
+        } catch (IOException error) {
+            throw error;
+        } catch (Exception ignored) {
+        }
         return null;
     }
 

@@ -9,14 +9,19 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 import tw.thootau.thatchatapplication.Properties.BotProperties;
+import tw.thootau.thatchatapplication.Service.UserFromNumberMonstersService;
 import tw.thootau.thatchatapplication.Service.UserService;
+import tw.thootau.thatchatapplication.Structs.Db.UserFromNumberMonstersInDb;
 import tw.thootau.thatchatapplication.Structs.Db.UserInDb;
 import tw.thootau.thatchatapplication.Structs.MessageEntry;
+import tw.thootau.thatchatapplication.Structs.RecentlyChattedUser;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
@@ -29,16 +34,26 @@ public class ThatChatBot extends TelegramLongPollingBot {
     private final NumberMonsterAPI numberMonsterAPI;
 
     private final UserService userService;
-
+    private final UserFromNumberMonstersService userFromNumberMonstersService;
     private final MessageSource messageSource;
+
+    private final List<BotCommand> commands;
     @Autowired
-    public ThatChatBot(BotProperties botProperties, NumberMonsterAPI numberMonsterAPI, UserService userService, MessageSource messageSource) {
+    public ThatChatBot(BotProperties botProperties, NumberMonsterAPI numberMonsterAPI, UserService userService, MessageSource messageSource, UserFromNumberMonstersService userFromNumberMonstersService) {
         super(botProperties.getSecret());
         this.botProperties = botProperties;
         this.numberMonsterAPI = numberMonsterAPI;
         this.messageSource = messageSource;
         this.userService = userService;
+        this.userFromNumberMonstersService = userFromNumberMonstersService;
 
+        List<BotCommand> commands = new ArrayList();
+        commands.add(new BotCommand("/login", messageSource.getMessage("command.login", null, Locale.JAPAN)));
+        commands.add(new BotCommand("/set_auth_key", messageSource.getMessage("command.set_auth_key", null, Locale.JAPAN)));
+        commands.add(new BotCommand("/set_chat_target_public_key", messageSource.getMessage("command.set_chat_target_public_key", null, Locale.JAPAN)));
+        commands.add(new BotCommand("/get_message", messageSource.getMessage("command.get_message", null, Locale.JAPAN)));
+        commands.add(new BotCommand("/get_self_data_in_db", messageSource.getMessage("command.get_self_data_in_db", null, Locale.JAPAN)));
+        this.commands = commands;
         try {
             // Create the TelegramBotsApi object to register your bots
             TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
@@ -99,6 +114,7 @@ public class ThatChatBot extends TelegramLongPollingBot {
                     if (setChatTargetPublicKeyMatched) {
                         String key = setChatTargetPublicKeyMatcher.group("key");
                         try {
+                            this.setChatTargetPublicKey(chatId, key);
                             String successfulMessage = messageSource.getMessage("message.ok", null, Locale.JAPAN);
                             this.sendMessage(chatId, successfulMessage);
                         } catch (Exception ex) {
@@ -115,12 +131,24 @@ public class ThatChatBot extends TelegramLongPollingBot {
                     if (getMessageMatched) {
                         int count = Integer.parseInt(getMessageMatcher.group("count"));
                         try {
-                            this.getMessage(chatId, count);
+                            List<String> messages = this.getMessage(chatId, count);
+                            this.sendMessage(chatId, String.join("\n", messages));
                         } catch (Exception ex) {
                             String errorMessage = messageSource.getMessage("message.failed", new String[]{ex.getMessage()}, Locale.JAPAN);
                             this.sendMessage(chatId, errorMessage);
                         }
                     }
+                    break;
+                case "/get_recently_chatted_targets":
+                    try {
+                        List<String> userLists = this.getRecentlyChattedUsers(chatId);
+                        this.sendMessage(chatId, String.join("\n", userLists));
+                    } catch (Exception ignored) {
+                        System.out.println(ignored);
+                        String errorMessage = messageSource.getMessage("message.user.notfound", null, Locale.JAPAN);
+                        this.sendMessage(chatId, errorMessage);
+                    }
+                    break;
 
                 case "/get_self_data_in_db":
                     try {
@@ -130,26 +158,50 @@ public class ThatChatBot extends TelegramLongPollingBot {
                         String errorMessage = messageSource.getMessage("message.user.notfound", null, Locale.JAPAN);
                         this.sendMessage(chatId, errorMessage);
                     }
+                    break;
             }
         }
     }
-
     void login(long telegramId, String mail, String password) throws Exception {
         String authKey = this.numberMonsterAPI.login(mail, password, 491);
         userService.setAuthKey(telegramId, authKey);
     }
 
-    void getMessage(long telegramId, int count) throws Exception {
-            UserInDb userInDb = userService.getUser(telegramId);
-            if (userInDb.targetPublicKey == null || userInDb.apiAuthKey == null) throw new Exception("ユーザーはまだログインしていません。ログインしてください。");
-            List<MessageEntry> messagesEntry;
-            try {
-                messagesEntry = this.numberMonsterAPI.getMessage(userInDb.apiAuthKey, userInDb.targetPublicKey, 491);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-            List<String> messages = messagesEntry.stream().map(messageEntry -> messageEntry.message).toList();
-            System.out.println(String.join("\n", messages));
+    void setChatTargetPublicKey(long telegramId, String targetPublicKey) throws Exception {
+        userService.setChatTargetPublicKey(telegramId, targetPublicKey);
+    }
+
+    List<String> getMessage(long telegramId, int count) throws Exception {
+        UserInDb userInDb = userService.getUser(telegramId);
+        String errorMessage = messageSource.getMessage("message.user.notfound", null, Locale.JAPAN);
+        if (userInDb.targetPublicKey == null) throw new Exception(errorMessage);
+        List<MessageEntry> messagesEntry;
+        try {
+            messagesEntry = this.numberMonsterAPI.getMessage(userInDb.apiAuthKey, userInDb.targetPublicKey, 491);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        String targetName;
+        try {
+            UserFromNumberMonstersInDb targetUser = userFromNumberMonstersService.getByPublicKey(userInDb.targetPublicKey);
+            targetName = targetUser.getName();
+        } catch (Exception ex) {
+            targetName = "話し相手";
+        }
+        String finalTargetName = targetName;
+        return messagesEntry.stream().map(messageEntry -> {
+            String fromUser = messageEntry.align.equals("0") ? "自分:" : String.format("%s:", finalTargetName);
+            return fromUser + messageEntry.message;
+        }).toList();
+    }
+
+    List<String> getRecentlyChattedUsers(long telegramId) throws Exception {
+        UserInDb userInDb = userService.getUser(telegramId);
+        List<RecentlyChattedUser> recentlyChattedUsers = numberMonsterAPI.getRecentlyChattedUsers(userInDb.apiAuthKey, 492);
+        return recentlyChattedUsers.stream().map(userInstance -> {
+            userFromNumberMonstersService.setUser(userInstance.getPublicKey(), userInstance.getName());
+            return userInstance.getName() + userInstance.getPublicKey();
+        }).toList();
     }
 
     void sendMessage(long telegramId, String content) {
