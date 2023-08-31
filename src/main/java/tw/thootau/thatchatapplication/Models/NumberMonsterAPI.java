@@ -24,7 +24,7 @@ public class NumberMonsterAPI implements ExternalAPI {
     public String login(String mail, String password, int applicationVersion) throws Exception {
         HttpUrl apiRequestURL = new HttpUrl.Builder()
                 .scheme("https")
-                .host(numberMonsterProperties.getHost())
+                .host(this.getApiHost())
                 .addPathSegment("login")
                 .addPathSegment("check")
                 .addQueryParameter("mail", mail)
@@ -48,7 +48,7 @@ public class NumberMonsterAPI implements ExternalAPI {
     }
     @Override
     public List<MessageEntry> getMessage(String authKey, String publicKey, int applicationVersion) throws IOException {
-        String urlGoingToFetch = String.format("https://%s/message/get?auth_key=%s&public_key=%s&start=0&version=%d", numberMonsterProperties.getHost(), authKey, publicKey, applicationVersion);
+        String urlGoingToFetch = String.format("https://%s/message/get?auth_key=%s&public_key=%s&start=0&version=%d", this.getApiHost(), authKey, publicKey, applicationVersion);
         Request request = new Request.Builder()
                 .url(urlGoingToFetch)
                 .addHeader("user-agent", "iOS 16.2 iPhone14,4 ja-JP 4.12.6 (491)")
@@ -70,7 +70,7 @@ public class NumberMonsterAPI implements ExternalAPI {
 
     @Override
     public List<RecentlyChattedUser> getRecentlyChattedUsers(String authKey, int applicationVersion) throws IOException {
-        String urlGoingToFetch = String.format("https://%s/message/getuser?auth_key=%s&start=0&version=%d", numberMonsterProperties.getHost(), authKey, applicationVersion);
+        String urlGoingToFetch = String.format("https://%s/message/getuser?auth_key=%s&start=0&version=%d", this.getApiHost(), authKey, applicationVersion);
         Request request = new Request.Builder()
                 .url(urlGoingToFetch)
                 .addHeader("user-agent", "iOS 16.2 iPhone14,4 ja-JP 4.12.6 (491)")
@@ -94,5 +94,13 @@ public class NumberMonsterAPI implements ExternalAPI {
     @Override
     public void sendMessage(String authKey, String publicKey, String messageContent, int applicationVersion) {
 
+    }
+
+    public String getApiHost() {
+        return String.format("api.%s", this.numberMonsterProperties.getHost());
+    }
+
+    public String getCdnHost() {
+        return String.format("cdn.%s", this.numberMonsterProperties.getHost());
     }
 }

@@ -9,7 +9,8 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 import tw.thootau.thatchatapplication.Properties.BotProperties;
@@ -37,7 +38,6 @@ public class ThatChatBot extends TelegramLongPollingBot {
     private final UserFromNumberMonstersService userFromNumberMonstersService;
     private final MessageSource messageSource;
 
-    private final List<BotCommand> commands;
     @Autowired
     public ThatChatBot(BotProperties botProperties, NumberMonsterAPI numberMonsterAPI, UserService userService, MessageSource messageSource, UserFromNumberMonstersService userFromNumberMonstersService) {
         super(botProperties.getSecret());
@@ -47,13 +47,12 @@ public class ThatChatBot extends TelegramLongPollingBot {
         this.userService = userService;
         this.userFromNumberMonstersService = userFromNumberMonstersService;
 
-        List<BotCommand> commands = new ArrayList();
-        commands.add(new BotCommand("/login", messageSource.getMessage("command.login", null, Locale.JAPAN)));
-        commands.add(new BotCommand("/set_auth_key", messageSource.getMessage("command.set_auth_key", null, Locale.JAPAN)));
-        commands.add(new BotCommand("/set_chat_target_public_key", messageSource.getMessage("command.set_chat_target_public_key", null, Locale.JAPAN)));
-        commands.add(new BotCommand("/get_message", messageSource.getMessage("command.get_message", null, Locale.JAPAN)));
-        commands.add(new BotCommand("/get_self_data_in_db", messageSource.getMessage("command.get_self_data_in_db", null, Locale.JAPAN)));
-        this.commands = commands;
+//        List<BotCommand> commands = new ArrayList();
+//        commands.add(new BotCommand("/login", messageSource.getMessage("command.login", null, Locale.JAPAN)));
+//        commands.add(new BotCommand("/set_auth_key", messageSource.getMessage("command.set_auth_key", null, Locale.JAPAN)));
+//        commands.add(new BotCommand("/set_chat_target_public_key", messageSource.getMessage("command.set_chat_target_public_key", null, Locale.JAPAN)));
+//        commands.add(new BotCommand("/get_message", messageSource.getMessage("command.get_message", null, Locale.JAPAN)));
+//        commands.add(new BotCommand("/get_self_data_in_db", messageSource.getMessage("command.get_self_data_in_db", null, Locale.JAPAN)));
         try {
             // Create the TelegramBotsApi object to register your bots
             TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
@@ -68,9 +67,10 @@ public class ThatChatBot extends TelegramLongPollingBot {
     public void onUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
             String messageText = update.getMessage().getText();
+            System.out.println(messageText);
             Long chatId = update.getMessage().getChatId();
             switch (messageText.split(" ")[0]) {
-                case "/login":
+                case "/login" -> {
                     final String loginRegex = "/login\\s+(?<mail>.*)\\s+(?<password>.*)";
                     final Pattern loginPattern = Pattern.compile(loginRegex);
                     final Matcher loginMatcher = loginPattern.matcher(messageText);
@@ -87,8 +87,8 @@ public class ThatChatBot extends TelegramLongPollingBot {
                             this.sendMessage(chatId, ex.getMessage());
                         }
                     }
-                    break;
-                case "/set_auth_key":
+                }
+                case "/set_auth_key" -> {
                     final String setAuthKeyRegex = "/set_auth_key\\s+(?<key>.*)";
                     final Pattern setAuthKeyPattern = Pattern.compile(setAuthKeyRegex);
                     final Matcher setAuthKeyMatcher = setAuthKeyPattern.matcher(messageText);
@@ -105,25 +105,15 @@ public class ThatChatBot extends TelegramLongPollingBot {
                             this.sendMessage(chatId, ex.getMessage());
                         }
                     }
-                    break;
-                case "/set_chat_target_public_key":
+                }
+                case "/set_chat_target_public_key" -> {
                     final String setChatTargetPublicKeyRegex = "/set_chat_target_public_key\\s+(?<key>.*)";
                     final Pattern setChatTargetPublicKeyPattern = Pattern.compile(setChatTargetPublicKeyRegex);
                     final Matcher setChatTargetPublicKeyMatcher = setChatTargetPublicKeyPattern.matcher(messageText);
                     boolean setChatTargetPublicKeyMatched = setChatTargetPublicKeyMatcher.matches();
-                    if (setChatTargetPublicKeyMatched) {
-                        String key = setChatTargetPublicKeyMatcher.group("key");
-                        try {
-                            this.setChatTargetPublicKey(chatId, key);
-                            String successfulMessage = messageSource.getMessage("message.ok", null, Locale.JAPAN);
-                            this.sendMessage(chatId, successfulMessage);
-                        } catch (Exception ex) {
-                            this.sendMessage(chatId, ex.getMessage());
-                        }
-                    }
-                    break;
-
-                case "/get_message":
+                    setChatTargetPublicKey(chatId, setChatTargetPublicKeyMatcher, setChatTargetPublicKeyMatched);
+                }
+                case "/get_message" -> {
                     final String getMessageRegex = "\\/get_message\\s+(?<count>.*)";
                     final Pattern getMessagePattern = Pattern.compile(getMessageRegex);
                     final Matcher getMessageMatcher = getMessagePattern.matcher(messageText);
@@ -138,19 +128,34 @@ public class ThatChatBot extends TelegramLongPollingBot {
                             this.sendMessage(chatId, errorMessage);
                         }
                     }
-                    break;
-                case "/get_recently_chatted_targets":
+                }
+                case "/get_recently_chatted_targets" -> {
                     try {
-                        List<String> userLists = this.getRecentlyChattedUsers(chatId);
-                        this.sendMessage(chatId, String.join("\n", userLists));
+                        List<RecentlyChattedUser> userLists = this.getRecentlyChattedUsers(chatId);
+                        InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+                        List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+                        userLists.forEach(user -> {
+                            List<InlineKeyboardButton> rowInline = new ArrayList<>();
+                            InlineKeyboardButton button = new InlineKeyboardButton();
+                            String callbackMessage = String.format("/set_chat_target_public_key %s", user.getPublicKey());
+                            System.out.println(callbackMessage);
+                            button.setText(user.getName());
+                            button.setCallbackData(callbackMessage);
+                            rowInline.add(button);
+                            rowsInline.add(rowInline);
+                        });
+                        markupInline.setKeyboard(rowsInline);
+                        SendMessage message = new SendMessage();
+                        message.setChatId(chatId);
+                        message.setText(messageSource.getMessage("message.dialog.set_public_key", null, Locale.JAPAN));
+                        message.setReplyMarkup(markupInline);
+                        this.sendMessage(chatId, message);
                     } catch (Exception ignored) {
-                        System.out.println(ignored);
                         String errorMessage = messageSource.getMessage("message.user.notfound", null, Locale.JAPAN);
                         this.sendMessage(chatId, errorMessage);
                     }
-                    break;
-
-                case "/get_self_data_in_db":
+                }
+                case "/get_self_data_in_db" -> {
                     try {
                         UserInDb userInDb = userService.getUser(chatId);
                         this.sendMessage(chatId, userInDb.toString());
@@ -158,10 +163,37 @@ public class ThatChatBot extends TelegramLongPollingBot {
                         String errorMessage = messageSource.getMessage("message.user.notfound", null, Locale.JAPAN);
                         this.sendMessage(chatId, errorMessage);
                     }
-                    break;
+                }
+            }
+        } else if (update.hasCallbackQuery()) {
+            // Set variables
+            String callbackMessage = update.getCallbackQuery().getData();
+            long chatId = update.getCallbackQuery().getMessage().getChatId();
+
+            if (callbackMessage.split(" ")[0].equals("/set_chat_target_public_key")) {
+                final String setChatTargetPublicKeyRegex = "/set_chat_target_public_key\\s+(?<key>.*)";
+                final Pattern setChatTargetPublicKeyPattern = Pattern.compile(setChatTargetPublicKeyRegex);
+                final Matcher setChatTargetPublicKeyMatcher = setChatTargetPublicKeyPattern.matcher(callbackMessage);
+                boolean setChatTargetPublicKeyMatched = setChatTargetPublicKeyMatcher.matches();
+                setChatTargetPublicKey(chatId, setChatTargetPublicKeyMatcher, setChatTargetPublicKeyMatched);
+            }
+
+        }
+    }
+
+    private void setChatTargetPublicKey(long chatId, Matcher setChatTargetPublicKeyMatcher, boolean setChatTargetPublicKeyMatched) {
+        if (setChatTargetPublicKeyMatched) {
+            String key = setChatTargetPublicKeyMatcher.group("key");
+            try {
+                this.setChatTargetPublicKey(chatId, key);
+                String successfulMessage = messageSource.getMessage("message.ok", null, Locale.JAPAN);
+                this.sendMessage(chatId, successfulMessage);
+            } catch (Exception ex) {
+                this.sendMessage(chatId, ex.getMessage());
             }
         }
     }
+
     void login(long telegramId, String mail, String password) throws Exception {
         String authKey = this.numberMonsterAPI.login(mail, password, 491);
         userService.setAuthKey(telegramId, authKey);
@@ -189,19 +221,18 @@ public class ThatChatBot extends TelegramLongPollingBot {
             targetName = "話し相手";
         }
         String finalTargetName = targetName;
-        return messagesEntry.stream().map(messageEntry -> {
+        return messagesEntry.stream().limit(count).map(messageEntry -> {
             String fromUser = messageEntry.align.equals("0") ? "自分:" : String.format("%s:", finalTargetName);
-            return fromUser + messageEntry.message;
+            if (messageEntry.message != null)
+                return fromUser + messageEntry.message;
+            else
+                return fromUser + String.format("https://%s/images/send/%s", numberMonsterAPI.getCdnHost(), messageEntry.image);
         }).toList();
     }
 
-    List<String> getRecentlyChattedUsers(long telegramId) throws Exception {
+    List<RecentlyChattedUser> getRecentlyChattedUsers(long telegramId) throws Exception {
         UserInDb userInDb = userService.getUser(telegramId);
-        List<RecentlyChattedUser> recentlyChattedUsers = numberMonsterAPI.getRecentlyChattedUsers(userInDb.apiAuthKey, 492);
-        return recentlyChattedUsers.stream().map(userInstance -> {
-            userFromNumberMonstersService.setUser(userInstance.getPublicKey(), userInstance.getName());
-            return userInstance.getName() + userInstance.getPublicKey();
-        }).toList();
+        return numberMonsterAPI.getRecentlyChattedUsers(userInDb.apiAuthKey, 492);
     }
 
     void sendMessage(long telegramId, String content) {
@@ -210,6 +241,14 @@ public class ThatChatBot extends TelegramLongPollingBot {
         sendMessage.setText(content);
         try {
             execute(sendMessage);
+        } catch (TelegramApiException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    void sendMessage(long telegramId, SendMessage message) {
+        try {
+            execute(message);
         } catch (TelegramApiException ex) {
             throw new RuntimeException(ex);
         }
