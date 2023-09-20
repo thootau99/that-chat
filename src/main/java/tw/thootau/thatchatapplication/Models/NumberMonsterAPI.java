@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import tw.thootau.thatchatapplication.Environments.NumberMonsterEnvironment;
 import tw.thootau.thatchatapplication.Interfaces.ExternalAPI;
-import tw.thootau.thatchatapplication.Properties.NumberMonsterProperties;
 import tw.thootau.thatchatapplication.Structs.*;
 
 import java.io.IOException;
@@ -14,10 +14,10 @@ import java.util.List;
 
 @Component
 public class NumberMonsterAPI implements ExternalAPI {
-    NumberMonsterProperties numberMonsterProperties;
+    NumberMonsterEnvironment numberMonsterEnvironment;
     @Autowired
-    NumberMonsterAPI(NumberMonsterProperties numberMonsterProperties) {
-        this.numberMonsterProperties = numberMonsterProperties;
+    NumberMonsterAPI(NumberMonsterEnvironment numberMonsterEnvironment) {
+        this.numberMonsterEnvironment = numberMonsterEnvironment;
     }
 
     @Override
@@ -123,10 +123,10 @@ public class NumberMonsterAPI implements ExternalAPI {
     }
 
     public String getApiHost() {
-        return String.format("api.%s", this.numberMonsterProperties.getHost());
+        return String.format("api.%s", this.numberMonsterEnvironment.getHost());
     }
 
     public String getCdnHost() {
-        return String.format("cdn.%s", this.numberMonsterProperties.getHost());
+        return String.format("cdn.%s", this.numberMonsterEnvironment.getHost());
     }
 }

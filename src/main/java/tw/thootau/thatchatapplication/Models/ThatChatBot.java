@@ -2,7 +2,6 @@ package tw.thootau.thatchatapplication.Models;
 
 import javassist.NotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -15,7 +14,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
-import tw.thootau.thatchatapplication.Properties.BotProperties;
+import tw.thootau.thatchatapplication.Environments.BotEnvironment;
 import tw.thootau.thatchatapplication.Service.UserFromNumberMonstersService;
 import tw.thootau.thatchatapplication.Service.UserService;
 import tw.thootau.thatchatapplication.Structs.Db.UserFromNumberMonstersInDb;
@@ -31,20 +30,18 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-@ConfigurationPropertiesScan
 @Component
 public class ThatChatBot extends TelegramLongPollingBot {
-    private final BotProperties botProperties;
+    private final BotEnvironment botEnvironment;
     private final NumberMonsterAPI numberMonsterAPI;
-
     private final UserService userService;
     private final UserFromNumberMonstersService userFromNumberMonstersService;
     private final MessageSource messageSource;
 
     @Autowired
-    public ThatChatBot(BotProperties botProperties, NumberMonsterAPI numberMonsterAPI, UserService userService, MessageSource messageSource, UserFromNumberMonstersService userFromNumberMonstersService) {
-        super(botProperties.getSecret());
-        this.botProperties = botProperties;
+    public ThatChatBot(BotEnvironment botEnvironment, NumberMonsterAPI numberMonsterAPI, UserService userService, MessageSource messageSource, UserFromNumberMonstersService userFromNumberMonstersService) {
+        super(botEnvironment.getSecret());
+        this.botEnvironment = botEnvironment;
         this.numberMonsterAPI = numberMonsterAPI;
         this.messageSource = messageSource;
         this.userService = userService;
@@ -74,7 +71,6 @@ public class ThatChatBot extends TelegramLongPollingBot {
     public void onUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
             String messageText = update.getMessage().getText();
-            System.out.println(messageText);
             Long chatId = update.getMessage().getChatId();
             switch (messageText.split(" ")[0]) {
                 case "/login" -> {
@@ -105,8 +101,6 @@ public class ThatChatBot extends TelegramLongPollingBot {
                         try {
                             userService.setAuthKey(chatId, key);
                             String successfulMessage = messageSource.getMessage("message.ok", null, Locale.JAPAN);
-                            System.out.println(successfulMessage);
-                            System.out.println("successfulMessage");
                             this.sendMessage(chatId, successfulMessage);
                         } catch (Exception ex) {
                             this.sendMessage(chatId, ex.getMessage());
@@ -163,7 +157,6 @@ public class ThatChatBot extends TelegramLongPollingBot {
                             List<InlineKeyboardButton> rowInline = new ArrayList<>();
                             InlineKeyboardButton button = new InlineKeyboardButton();
                             String callbackMessage = String.format("/set_chat_target_public_key %s", user.getPublicKey());
-                            System.out.println(callbackMessage);
                             button.setText(user.getName());
                             button.setCallbackData(callbackMessage);
                             rowInline.add(button);
@@ -282,6 +275,6 @@ public class ThatChatBot extends TelegramLongPollingBot {
 
     @Override
     public String getBotUsername() {
-        return this.botProperties.getName();
+        return this.botEnvironment.getName();
     }
 }/**/

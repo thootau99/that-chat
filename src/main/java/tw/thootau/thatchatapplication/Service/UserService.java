@@ -33,7 +33,6 @@ public class UserService {
     }
     public void setChatTargetPublicKey(long telegramId, String targetPublicKey) throws Exception {
         UserInDb userInDb = this.getUser(telegramId);
-        System.out.printf("%d: 話し相手のPublic Keyを設定して行います。", userInDb.getTelegramId());
         userInDb.setTargetPublicKey(targetPublicKey);
         usersRepository.save(userInDb);
     }
