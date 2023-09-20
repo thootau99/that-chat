@@ -92,8 +92,34 @@ public class NumberMonsterAPI implements ExternalAPI {
     }
 
     @Override
-    public void sendMessage(String authKey, String publicKey, String messageContent, int applicationVersion) {
+    public Boolean sendMessage(String authKey, String publicKey, String messageContent, int applicationVersion) throws Exception {
+        HttpUrl apiRequestURL = new HttpUrl.Builder()
+                .scheme("https")
+                .host(this.getApiHost())
+                .addPathSegment("message")
+                .addPathSegment("send")
+                .build();
+        String bodyInString = String.format("auth_key=%s&message=%s&public_key=%s&version=491",authKey, messageContent, publicKey);
+        RequestBody body = RequestBody.create(bodyInString.getBytes());
+        Request request = new Request.Builder()
+                .url(apiRequestURL)
+                .addHeader("Host", this.getApiHost())
+                .addHeader("accept", "application/json")
+                .addHeader("content-type", "application/x-www-form-urlencoded; charset=utf-8")
+                .addHeader("user-agent", "iOS 16.2 iPhone14,4 ja-JP 4.12.6 (491)")
+                .post(body)
+                .build();
+        OkHttpClient client = new OkHttpClient();
 
+        try (Response response = client.newCall(request).execute()) {
+            if (!response.isSuccessful()) throw new Exception("Send Message Failed.");
+            ObjectMapper mapper  = new ObjectMapper();
+            mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            assert response.body() != null;
+            String responseJsonString = response.body().string();
+            GetSendMessageResponse apiResponse = mapper.readValue(responseJsonString, GetSendMessageResponse.class);
+            return apiResponse.result == 1;
+        }
     }
 
     public String getApiHost() {

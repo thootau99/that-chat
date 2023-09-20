@@ -12,5 +12,5 @@ public interface ExternalAPI {
 
     List<RecentlyChattedUser> getRecentlyChattedUsers(String authKey, int applicationVersion) throws IOException;
 
-    void sendMessage(String authKey, String publicKey, String messageContent, int applicationVersion );
+    Boolean sendMessage(String authKey, String publicKey, String messageContent, int applicationVersion ) throws Exception;
 }

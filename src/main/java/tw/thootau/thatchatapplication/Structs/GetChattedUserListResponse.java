@@ -3,10 +3,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
-public class GetChattedUserListResponse {
-    @JsonProperty("result")
-
-    public int result;
+public class GetChattedUserListResponse extends GeneralApiResponse {
     @JsonProperty("data")
 
     public List<RecentlyChattedUser> data;

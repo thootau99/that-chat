@@ -1,7 +1,6 @@
 package tw.thootau.thatchatapplication.Structs;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Getter;
 
 import java.util.List;
 
@@ -20,6 +19,9 @@ public class MessageEntry {
 
     @JsonProperty("profile_image")
     public long profileImage;
+
+    @JsonProperty("translate_message")
+    public String translateMessage;
 
     @JsonProperty("thumbnail")
     public long thumbnail;

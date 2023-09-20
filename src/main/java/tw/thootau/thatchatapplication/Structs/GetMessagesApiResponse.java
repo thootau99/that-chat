@@ -5,9 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 
-public class GetMessagesApiResponse {
-    @JsonProperty("result")
-    public String result;
+public class GetMessagesApiResponse extends GeneralApiResponse {
     @JsonProperty("data")
     public List<MessageEntry> data;
     @JsonProperty("message_count")
