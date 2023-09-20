@@ -25,8 +25,8 @@ jobs:
         with:
           push: true
           build-args: |
-            BOT_SECRET: ${{ secrets.BOT_SECRET }}
-            REMOTE_API_HOST: ${{ secrets.REMOTE_API_HOST }}
+            BOT_SECRET=${{ secrets.BOT_SECRET }}
+            REMOTE_API_HOST=${{ secrets.REMOTE_API_HOST }}
           tags: ${{ secrets.DOCKER_USERNAME }}/that-chat:prod
 
   deploy:
